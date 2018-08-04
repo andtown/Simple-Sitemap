@@ -222,7 +222,7 @@ class Simple_Sitemap {
 					if ( !(isset($wp_taxonomies[$sitemap['taxonomy']]) && ($wp_taxonomies[$sitemap['taxonomy']] instanceof WP_Taxonomy) && $wp_taxonomies[$sitemap['taxonomy']]->publicly_queryable) ) continue;
 					if ( isset($wp_taxonomies[$sitemap['taxonomy']]->object_type) ) {
 						foreach ( (array) $wp_taxonomies[$sitemap['taxonomy']]->object_type as $post_type )
-							if ( isset($wp_post_types[$post_type]) && !empty($wp_post_types[$post_type]) ) goto move_on1;						
+							if ( in_array($post_type, $this->sitemap_post_types) && isset($wp_post_types[$post_type]) && !empty($wp_post_types[$post_type]) ) goto move_on1;						
 					}
 					continue;
 					move_on1:
@@ -252,7 +252,7 @@ class Simple_Sitemap {
 					if ( !(isset($wp_taxonomies[$sitemap['taxonomy']]) && ($wp_taxonomies[$sitemap['taxonomy']] instanceof WP_Taxonomy) && $wp_taxonomies[$sitemap['taxonomy']]->publicly_queryable) ) continue;
 					if ( isset($wp_taxonomies[$sitemap['taxonomy']]->object_type) ) {
 						foreach ( (array) $wp_taxonomies[$sitemap['taxonomy']]->object_type as $post_type )
-							if ( isset($wp_post_types[$post_type]) && !empty($wp_post_types[$post_type]) ) goto move_on2;						
+							if ( in_array($post_type, $this->sitemap_post_types) && isset($wp_post_types[$post_type]) && !empty($wp_post_types[$post_type]) ) goto move_on2;						
 					}
 					continue;
 					move_on2:			
