@@ -23,6 +23,20 @@ class Simple_Sitemap {
 	protected $sitemap_post_types;
 
 	/**
+	 * @var boolean
+	 *
+	 * @since 0.1.0
+	 */
+	protected $is_index_sitemap;
+
+	/**
+	 * @var boolean
+	 *
+	 * @since 0.1.0
+	 */
+	protected $is_post_type_sitemap;	
+
+	/**
 	 * Flush rewrite rules
 	 *
 	 * @since 0.1.0
@@ -71,6 +85,10 @@ class Simple_Sitemap {
 
 		$this->sitemap_post_types = array('post','page');
 
+		$this->is_index_sitemap = false;
+
+		$this->is_post_type_sitemap = false;		
+
 	}
 
 	/**
@@ -84,6 +102,78 @@ class Simple_Sitemap {
 		$this->sitemap_post_types = apply_filters('sitemap_post_types', $this->sitemap_post_types);
 
 	}	
+
+	/**
+	 *
+	 *	
+	 *
+	 * @since 0.1.0
+	 */
+	protected function build_sitemap( $query_vars ) {
+		global $wpdb, $wp_rewrite;
+
+		$where = '';
+		if ( $this->is_index_sitemap = (isset($query_vars['post_type']) && empty($query_vars['post_type'])) ) {
+			$query_vars['post_type'] = $this->sitemap_post_types;
+			$orderby = 't1.post_type ASC, t2.year DESC, t2.month DESC';
+			$groupby = 't2.month, t2.year';
+			$post_modified = 'max(t1.post_modified)';			
+		} elseif ( $this->is_post_type_sitemap = true ) {
+  			$wpdb->escape_by_ref($query_vars['post_type']);
+			$query_vars['post_type'] = (array) $query_vars['post_type'];
+			$query_vars['month'] = intval($query_vars['month']);
+			$where = "year(post_date) = {$query_vars['year']} AND month(post_date) = {$query_vars['month']} AND ";
+			$orderby = 't1.post_modified DESC';
+			$groupby = 't1.ID';
+			$post_modified = 't1.post_modified';
+		}
+
+		$post_type_query = [];
+		if ( $this->is_index_sitemap || $this->is_post_type_sitemap ):
+			$post_type_query = " 
+				SELECT distinct
+					t1.ID, t1.post_name, t2.month, t2.year, t1.post_type, $post_modified as last_modified
+				FROM 
+					wp_posts as t1
+				JOIN 
+					( select ID, post_type, month(post_date) as month, year(post_date) as year from wp_posts where $where post_status = 'publish' and post_type in ('".implode("','", $query_vars['post_type'])."') ) 
+				AS
+					t2
+				ON 
+					t1.ID = t2.ID
+				WHERE
+					t1.post_type = t2.post_type
+				GROUP BY 
+					$groupby
+				ORDER BY 
+					$orderby
+			";
+
+			$post_type_query = $wpdb->get_results($post_type_query, ARRAY_A);
+		endif;
+
+		if ( $this->is_index_sitemap ): ?> 
+		<sitemapindex xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/siteindex.xsd" xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+			<?php foreach ( (array) $post_type_query as $sitemap ): ?>
+			<sitemap> 
+				<loc><?=home_url( $wp_rewrite->root )?>sitemap-<?php echo $sitemap['post_type']; ?>-<?php echo $sitemap['year']; ?>-<?php echo (strlen($sitemap['month'])>1)?$sitemap['month']:'0'.$sitemap['month']; ?>.xml</loc>
+				<lastmod><?php echo date("Y-m-d\Th:m:s+00:00",strtotime($sitemap['last_modified'])); ?></lastmod>
+			</sitemap>
+			<?php endforeach; ?>				
+		</sitemapindex>	
+		<?php else:  ?>
+		<urlset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd" xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+			<?php foreach ( (array) $post_type_query as $sitemap ): ?>		
+			<url>
+				<loc><?=get_the_permalink($sitemap['ID'])?></loc>
+				<lastmod><?php echo date("Y-m-d\Th:m:s+00:00",strtotime($sitemap['last_modified'])); ?></lastmod>
+				<changefreq>weekly</changefreq>
+				<priority>0.6</priority>
+			</url>
+			<?php endforeach; ?>								
+		</urlset>
+		<?php endif; 
+	}
 
 	/**
 	 *
@@ -134,6 +224,8 @@ class Simple_Sitemap {
 	                parse_str( $query_vars, $query_vars );
 
 	                header('Content-Type: application/xml');
+
+	                $this->build_sitemap($query_vars);
 
 	                die();
 	            }
