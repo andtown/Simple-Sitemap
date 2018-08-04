@@ -90,7 +90,7 @@ class Simple_Sitemap {
 
 		static::$instance = $this;
 
-		$this->sitemap_post_types = array('post','page');
+		$this->sitemap_post_types = array('post','page','event');
 
 		$this->is_index_sitemap = false;
 
@@ -134,7 +134,7 @@ class Simple_Sitemap {
 	 * @since 0.1.0
 	 */
 	protected function build_sitemap( $query_vars ) {
-		global $wpdb, $wp_rewrite, $wp_taxonomies;
+		global $wpdb, $wp_rewrite, $wp_taxonomies, $wp_post_types;
 
 		$where = '';
 		if ( $this->is_index_sitemap = (isset($query_vars['post_type']) && empty($query_vars['post_type'])) ) {
@@ -208,7 +208,10 @@ class Simple_Sitemap {
 
 		if ( $this->is_index_sitemap ): ?> 
 		<sitemapindex xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/siteindex.xsd" xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-			<?php foreach ( (array) $post_type_query as $sitemap ): ?>
+			<?php 
+				foreach ( (array) $post_type_query as $sitemap ): 
+					if ( !isset($wp_post_types[$sitemap['post_type']]) || empty($wp_post_types[$sitemap['post_type']]) ) continue;
+			?>
 			<sitemap> 
 				<loc><?=home_url( $wp_rewrite->root )?>sitemap-<?php echo $sitemap['post_type']; ?>-<?php echo $sitemap['year']; ?>-<?php echo (strlen($sitemap['month'])>1)?$sitemap['month']:'0'.$sitemap['month']; ?>.xml</loc>
 				<lastmod><?php echo date("Y-m-d\Th:m:s+00:00",strtotime($sitemap['last_modified'])); ?></lastmod>
@@ -217,6 +220,12 @@ class Simple_Sitemap {
 			<?php 
 				foreach ( (array) $taxonomies_terms_query as $sitemap ): 
 					if ( !(isset($wp_taxonomies[$sitemap['taxonomy']]) && ($wp_taxonomies[$sitemap['taxonomy']] instanceof WP_Taxonomy) && $wp_taxonomies[$sitemap['taxonomy']]->publicly_queryable) ) continue;
+					if ( isset($wp_taxonomies[$sitemap['taxonomy']]->object_type) ) {
+						foreach ( (array) $wp_taxonomies[$sitemap['taxonomy']]->object_type as $post_type )
+							if ( isset($wp_post_types[$post_type]) && !empty($wp_post_types[$post_type]) ) goto move_on1;						
+					}
+					continue;
+					move_on1:
 					if ( isset($wp_taxonomies[$sitemap['taxonomy']]->rewrite['slug']) && !empty($wp_taxonomies[$sitemap['taxonomy']]->rewrite['slug']) )
 						$sitemap['taxonomy'] = $wp_taxonomies[$sitemap['taxonomy']]->rewrite['slug'];
 			?>		
@@ -227,7 +236,10 @@ class Simple_Sitemap {
 		</sitemapindex>	
 		<?php else:  ?>
 		<urlset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd" xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-			<?php foreach ( (array) $post_type_query as $sitemap ): ?>		
+			<?php 
+				foreach ( (array) $post_type_query as $sitemap ): 
+					if ( !isset($wp_post_types[$sitemap['post_type']]) || empty($wp_post_types[$sitemap['post_type']]) ) continue;
+			?>		
 			<url>
 				<loc><?=get_the_permalink($sitemap['ID'])?></loc>
 				<lastmod><?php echo date("Y-m-d\Th:m:s+00:00",strtotime($sitemap['last_modified'])); ?></lastmod>
@@ -237,9 +249,15 @@ class Simple_Sitemap {
 			<?php endforeach; ?>	
 			<?php 
 				foreach ( (array) $taxonomies_terms_query as $sitemap ): 
-				if ( !(isset($wp_taxonomies[$sitemap['taxonomy']]) && ($wp_taxonomies[$sitemap['taxonomy']] instanceof WP_Taxonomy) && $wp_taxonomies[$sitemap['taxonomy']]->publicly_queryable) ) continue;
-				if ( isset($wp_taxonomies[$sitemap['taxonomy']]->rewrite['slug']) && !empty($wp_taxonomies[$sitemap['taxonomy']]->rewrite['slug']) )
-					$sitemap['taxonomy'] = $wp_taxonomies[$sitemap['taxonomy']]->rewrite['slug'];					
+					if ( !(isset($wp_taxonomies[$sitemap['taxonomy']]) && ($wp_taxonomies[$sitemap['taxonomy']] instanceof WP_Taxonomy) && $wp_taxonomies[$sitemap['taxonomy']]->publicly_queryable) ) continue;
+					if ( isset($wp_taxonomies[$sitemap['taxonomy']]->object_type) ) {
+						foreach ( (array) $wp_taxonomies[$sitemap['taxonomy']]->object_type as $post_type )
+							if ( isset($wp_post_types[$post_type]) && !empty($wp_post_types[$post_type]) ) goto move_on2;						
+					}
+					continue;
+					move_on2:			
+					if ( isset($wp_taxonomies[$sitemap['taxonomy']]->rewrite['slug']) && !empty($wp_taxonomies[$sitemap['taxonomy']]->rewrite['slug']) )
+						$sitemap['taxonomy'] = $wp_taxonomies[$sitemap['taxonomy']]->rewrite['slug'];					
 			?>		
 			<url>
 				<loc><?=home_url( $wp_rewrite->root )?><?=$sitemap['taxonomy']?>/<?=$sitemap['slug']?></loc>
