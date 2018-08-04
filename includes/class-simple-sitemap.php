@@ -14,6 +14,13 @@ class Simple_Sitemap {
 	 */
 	protected static $instance;
 
+	/**
+	 *
+	 * @var array
+	 *
+	 * @since 0.1.0
+	 */
+	protected $sitemap_post_types;
 
 	/**
 	 * Flush rewrite rules
@@ -47,6 +54,8 @@ class Simple_Sitemap {
 
 		add_action('wp_loaded', array($this, 'parse_request'), 10, 1);		
 
+		add_action( 'init', array($this, 'wp_init'), 10, 1 );
+
 	}
 
 	/**
@@ -57,8 +66,24 @@ class Simple_Sitemap {
 	 * @since 0.1.0
 	 */
 	protected function init() {
+
 		static::$instance = $this;
+
+		$this->sitemap_post_types = array('post','page');
+
 	}
+
+	/**
+	 * 
+	 *
+	 *
+	 * @since 0.1.0
+	 */
+	public function wp_init() {
+
+		$this->sitemap_post_types = apply_filters('sitemap_post_types', $this->sitemap_post_types);
+
+	}	
 
 	/**
 	 *
@@ -123,11 +148,11 @@ class Simple_Sitemap {
 	 *
 	 * @since 0.1.0
 	 */
-    protected function rewrite_rules() { 
+    protected function rewrite_rules() {
         return apply_filters('simple_sitemap_rewrite_rules', [
-        	"sitemap(?:-(page|post)-([0-9]{4})-([0-9]{2}))?\.xml/?$" => 'post_type=$matches[1]&year=$matches[2]&month=$matches[3]'
+        	"sitemap(?:-(".implode('|', $this->sitemap_post_types).")-([0-9]{4})-([0-9]{2}))?\.xml/?$" => 'post_type=$matches[1]&year=$matches[2]&month=$matches[3]'
         ]);
-    }	
+    }
 
 	/**
 	 * 
