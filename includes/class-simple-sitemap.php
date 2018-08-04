@@ -90,7 +90,7 @@ class Simple_Sitemap {
 
 		static::$instance = $this;
 
-		$this->sitemap_post_types = array('post','page','event');
+		$this->sitemap_post_types = array('post','page');
 
 		$this->is_index_sitemap = false;
 
