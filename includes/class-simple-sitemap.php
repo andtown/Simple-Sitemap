@@ -37,6 +37,13 @@ class Simple_Sitemap {
 	protected $is_post_type_sitemap;	
 
 	/**
+	 * @var boolean
+	 *
+	 * @since 0.1.0
+	 */
+	protected $is_taxonomy_sitemap;			
+
+	/**
 	 * Flush rewrite rules
 	 *
 	 * @since 0.1.0
@@ -87,7 +94,9 @@ class Simple_Sitemap {
 
 		$this->is_index_sitemap = false;
 
-		$this->is_post_type_sitemap = false;		
+		$this->is_post_type_sitemap = false;
+
+		$this->is_taxonomy_sitemap = false;		
 
 	}
 
@@ -105,12 +114,27 @@ class Simple_Sitemap {
 
 	/**
 	 *
+	 *
+	 * @since 0.1.0
+	 */
+	private function get_taxonomy_name_by_slug( $slug ) {
+		global $wp_taxonomies;
+		foreach ( (array) $wp_taxonomies as $taxonomy ) {
+			if ( isset($taxonomy->rewrite['slug']) && ($slug == $taxonomy->rewrite['slug']) ) {
+				return $taxonomy->name;
+				break;
+			}
+		}
+	}
+
+	/**
+	 *
 	 *	
 	 *
 	 * @since 0.1.0
 	 */
 	protected function build_sitemap( $query_vars ) {
-		global $wpdb, $wp_rewrite;
+		global $wpdb, $wp_rewrite, $wp_taxonomies;
 
 		$where = '';
 		if ( $this->is_index_sitemap = (isset($query_vars['post_type']) && empty($query_vars['post_type'])) ) {
@@ -118,7 +142,7 @@ class Simple_Sitemap {
 			$orderby = 't1.post_type ASC, t2.year DESC, t2.month DESC';
 			$groupby = 't2.month, t2.year';
 			$post_modified = 'max(t1.post_modified)';			
-		} elseif ( $this->is_post_type_sitemap = true ) {
+		} elseif ( $this->is_post_type_sitemap = ( !empty($query_vars['post_type']) && !empty($query_vars['month']) && !empty($query_vars['year']) ) ) {
   			$wpdb->escape_by_ref($query_vars['post_type']);
 			$query_vars['post_type'] = (array) $query_vars['post_type'];
 			$query_vars['month'] = intval($query_vars['month']);
@@ -152,6 +176,36 @@ class Simple_Sitemap {
 			$post_type_query = $wpdb->get_results($post_type_query, ARRAY_A);
 		endif;
 
+		$where = '';
+		if ( $this->is_index_sitemap = $this->is_index_sitemap && !isset($query_vars['taxonomy']) ) {
+			$groupby = 't2.taxonomy';
+		} elseif ( $this->is_taxonomy_sitemap = ( !empty($query_vars['taxonomy']) ) ) {
+			$wpdb->escape_by_ref($query_vars['taxonomy']);	
+			$query_vars['taxonomy'] = $this->get_taxonomy_name_by_slug($query_vars['taxonomy']);
+			$where = "taxonomy = '{$query_vars['taxonomy']}' AND ";			
+			$groupby = 't2.term_id';
+		}
+
+		$taxonomies_terms_query = [];
+		if ( $this->is_index_sitemap || $this->is_taxonomy_sitemap ):
+			$taxonomies_terms_query = "
+				SELECT DISTINCT
+					t1.term_id, t1.slug, t2.taxonomy
+				FROM
+					wp_terms as t1
+				JOIN
+					( SELECT term_id, taxonomy FROM wp_term_taxonomy where $where 1=1 ) as t2
+				ON
+					t2.term_id = t1.term_id
+				WHERE 
+				    t1.term_id != '' AND t1.term_id = t2.term_id
+				GROUP BY
+					$groupby
+			";
+
+			$taxonomies_terms_query = $wpdb->get_results($taxonomies_terms_query, ARRAY_A);
+		endif;
+
 		if ( $this->is_index_sitemap ): ?> 
 		<sitemapindex xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/siteindex.xsd" xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 			<?php foreach ( (array) $post_type_query as $sitemap ): ?>
@@ -159,6 +213,16 @@ class Simple_Sitemap {
 				<loc><?=home_url( $wp_rewrite->root )?>sitemap-<?php echo $sitemap['post_type']; ?>-<?php echo $sitemap['year']; ?>-<?php echo (strlen($sitemap['month'])>1)?$sitemap['month']:'0'.$sitemap['month']; ?>.xml</loc>
 				<lastmod><?php echo date("Y-m-d\Th:m:s+00:00",strtotime($sitemap['last_modified'])); ?></lastmod>
 			</sitemap>
+			<?php endforeach; ?>
+			<?php 
+				foreach ( (array) $taxonomies_terms_query as $sitemap ): 
+					if ( !(isset($wp_taxonomies[$sitemap['taxonomy']]) && ($wp_taxonomies[$sitemap['taxonomy']] instanceof WP_Taxonomy) && $wp_taxonomies[$sitemap['taxonomy']]->publicly_queryable) ) continue;
+					if ( isset($wp_taxonomies[$sitemap['taxonomy']]->rewrite['slug']) && !empty($wp_taxonomies[$sitemap['taxonomy']]->rewrite['slug']) )
+						$sitemap['taxonomy'] = $wp_taxonomies[$sitemap['taxonomy']]->rewrite['slug'];
+			?>		
+			<sitemap> 
+				<loc><?=home_url( $wp_rewrite->root )?>sitemap-taxonomy/<?=$sitemap['taxonomy']?>.xml</loc>
+			</sitemap>		
 			<?php endforeach; ?>				
 		</sitemapindex>	
 		<?php else:  ?>
@@ -167,6 +231,18 @@ class Simple_Sitemap {
 			<url>
 				<loc><?=get_the_permalink($sitemap['ID'])?></loc>
 				<lastmod><?php echo date("Y-m-d\Th:m:s+00:00",strtotime($sitemap['last_modified'])); ?></lastmod>
+				<changefreq>weekly</changefreq>
+				<priority>0.6</priority>
+			</url>
+			<?php endforeach; ?>	
+			<?php 
+				foreach ( (array) $taxonomies_terms_query as $sitemap ): 
+				if ( !(isset($wp_taxonomies[$sitemap['taxonomy']]) && ($wp_taxonomies[$sitemap['taxonomy']] instanceof WP_Taxonomy) && $wp_taxonomies[$sitemap['taxonomy']]->publicly_queryable) ) continue;
+				if ( isset($wp_taxonomies[$sitemap['taxonomy']]->rewrite['slug']) && !empty($wp_taxonomies[$sitemap['taxonomy']]->rewrite['slug']) )
+					$sitemap['taxonomy'] = $wp_taxonomies[$sitemap['taxonomy']]->rewrite['slug'];					
+			?>		
+			<url>
+				<loc><?=home_url( $wp_rewrite->root )?><?=$sitemap['taxonomy']?>/<?=$sitemap['slug']?></loc>
 				<changefreq>weekly</changefreq>
 				<priority>0.6</priority>
 			</url>
@@ -242,7 +318,8 @@ class Simple_Sitemap {
 	 */
     protected function rewrite_rules() {
         return apply_filters('simple_sitemap_rewrite_rules', [
-        	"sitemap(?:-(".implode('|', $this->sitemap_post_types).")-([0-9]{4})-([0-9]{2}))?\.xml/?$" => 'post_type=$matches[1]&year=$matches[2]&month=$matches[3]'
+        	"sitemap(?:-(".implode('|', $this->sitemap_post_types).")-([0-9]{4})-([0-9]{2}))?\.xml/?$" => 'post_type=$matches[1]&year=$matches[2]&month=$matches[3]',
+        	"sitemap-taxonomy\/(.+?)(?:\/(.+?))?\.xml/?$" => 'taxonomy=$matches[1]&term=$matches[2]'        	
         ]);
     }
 
