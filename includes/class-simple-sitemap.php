@@ -213,7 +213,7 @@ class Simple_Sitemap {
 					if ( !isset($wp_post_types[$sitemap['post_type']]) || empty($wp_post_types[$sitemap['post_type']]) ) continue;
 			?>
 			<sitemap> 
-				<loc><?=home_url( $wp_rewrite->root )?>sitemap-<?php echo $sitemap['post_type']; ?>-<?php echo $sitemap['year']; ?>-<?php echo (strlen($sitemap['month'])>1)?$sitemap['month']:'0'.$sitemap['month']; ?>.xml</loc>
+				<loc><?=trailingslashit(home_url( $wp_rewrite->root ))?>sitemap-<?php echo $sitemap['post_type']; ?>-<?php echo $sitemap['year']; ?>-<?php echo (strlen($sitemap['month'])>1)?$sitemap['month']:'0'.$sitemap['month']; ?>.xml</loc>
 				<lastmod><?php echo date("Y-m-d\Th:m:s+00:00",strtotime($sitemap['last_modified'])); ?></lastmod>
 			</sitemap>
 			<?php endforeach; ?>
@@ -230,7 +230,7 @@ class Simple_Sitemap {
 						$sitemap['taxonomy'] = $wp_taxonomies[$sitemap['taxonomy']]->rewrite['slug'];
 			?>		
 			<sitemap> 
-				<loc><?=home_url( $wp_rewrite->root )?>sitemap-taxonomy/<?=$sitemap['taxonomy']?>.xml</loc>
+				<loc><?=trailingslashit(home_url( $wp_rewrite->root ))?>sitemap-taxonomy/<?=$sitemap['taxonomy']?>.xml</loc>
 			</sitemap>		
 			<?php endforeach; ?>				
 		</sitemapindex>	
@@ -260,7 +260,7 @@ class Simple_Sitemap {
 						$sitemap['taxonomy'] = $wp_taxonomies[$sitemap['taxonomy']]->rewrite['slug'];					
 			?>		
 			<url>
-				<loc><?=home_url( $wp_rewrite->root )?><?=$sitemap['taxonomy']?>/<?=$sitemap['slug']?></loc>
+				<loc><?=trailingslashit(home_url( $wp_rewrite->root ))?><?=$sitemap['taxonomy']?>/<?=$sitemap['slug']?></loc>
 				<changefreq>weekly</changefreq>
 				<priority>0.6</priority>
 			</url>
