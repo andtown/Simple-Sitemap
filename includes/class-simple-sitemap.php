@@ -140,7 +140,7 @@ class Simple_Sitemap {
 		if ( $this->is_index_sitemap = (isset($query_vars['post_type']) && empty($query_vars['post_type'])) ) {
 			$query_vars['post_type'] = $this->sitemap_post_types;
 			$orderby = 't1.post_type ASC, t2.year DESC, t2.month DESC';
-			$groupby = 't2.month, t2.year';
+			$groupby = 't1.post_type, t2.month, t2.year';
 			$post_modified = 'max(t1.post_modified)';			
 		} elseif ( $this->is_post_type_sitemap = ( !empty($query_vars['post_type']) && !empty($query_vars['month']) && !empty($query_vars['year']) ) ) {
   			$wpdb->escape_by_ref($query_vars['post_type']);
