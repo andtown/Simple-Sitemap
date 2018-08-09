@@ -213,7 +213,7 @@ class Simple_Sitemap {
 					if ( !isset($wp_post_types[$sitemap['post_type']]) || empty($wp_post_types[$sitemap['post_type']]) ) continue;
 			?>
 			<sitemap> 
-				<loc><?=trailingslashit(home_url( $wp_rewrite->root ))?>sitemap-<?php echo $sitemap['post_type']; ?>-<?php echo $sitemap['year']; ?>-<?php echo (strlen($sitemap['month'])>1)?$sitemap['month']:'0'.$sitemap['month']; ?>.xml</loc>
+				<loc><?=trailingslashit(home_url( $wp_rewrite->root ))?>sitemap/post-type/<?php echo $sitemap['post_type']; ?>/<?php echo $sitemap['year']; ?>/<?php echo (strlen($sitemap['month'])>1)?$sitemap['month']:'0'.$sitemap['month']; ?></loc>
 				<lastmod><?php echo date("Y-m-d\Th:m:s+00:00",strtotime($sitemap['last_modified'])); ?></lastmod>
 			</sitemap>
 			<?php endforeach; ?>
@@ -230,7 +230,7 @@ class Simple_Sitemap {
 						$sitemap['taxonomy'] = $wp_taxonomies[$sitemap['taxonomy']]->rewrite['slug'];
 			?>		
 			<sitemap> 
-				<loc><?=trailingslashit(home_url( $wp_rewrite->root ))?>sitemap-taxonomy/<?=$sitemap['taxonomy']?>.xml</loc>
+				<loc><?=trailingslashit(home_url( $wp_rewrite->root ))?>sitemap/taxonomy/<?=$sitemap['taxonomy']?></loc>
 			</sitemap>		
 			<?php endforeach; ?>				
 		</sitemapindex>	
@@ -336,8 +336,8 @@ class Simple_Sitemap {
 	 */
     protected function rewrite_rules() {
         return apply_filters('simple_sitemap_rewrite_rules', [
-        	"sitemap(?:-(".implode('|', $this->sitemap_post_types).")-([0-9]{4})-([0-9]{2}))?\.xml/?$" => 'post_type=$matches[1]&year=$matches[2]&month=$matches[3]',
-        	"sitemap-taxonomy\/(.+?)(?:\/(.+?))?\.xml/?$" => 'taxonomy=$matches[1]&term=$matches[2]'        	
+        	"sitemap(?:\/post-type\/(".implode('|', $this->sitemap_post_types).")\/([0-9]{4})\/([0-9]{2}))?/?$" => 'post_type=$matches[1]&year=$matches[2]&month=$matches[3]',
+        	"sitemap\/taxonomy\/(.+?)(?:\/(.+?))?/?$" => 'taxonomy=$matches[1]&term=$matches[2]'
         ]);
     }
 
